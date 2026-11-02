@@ -35,4 +35,5 @@ $RECYCLE.BIN/
 *.tmp
 *.bak
 *.swp
+cloudflared.exe
 
