@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/navbar :: header_meta('Emergency Contacts - SafeSen-AI')}"></head>
+<body>
+    <div th:replace="~{fragments/navbar :: navbar('contacts')}"></div>
+    <div th:replace="~{fragments/navbar :: sos_modal}"></div>
+
+    <main class="container py-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+            <div>
+                <h3 class="fw-bold mb-1">
+                    <i class="bi bi-people-fill text-danger me-2"></i> 5 Favorite Trusted Emergency Contacts
+                </h3>
+                <p class="text-muted small mb-0">
+                    Pre-registered network of trusted contacts who receive instantaneous SMS and email broadcasts with live GPS links upon SOS trigger
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+                <span class="badge bg-danger fs-6 px-3 py-2" th:text="${contacts.size() + ' / 5 Slots Registered'}">5 / 5 Slots Registered</span>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left: Add Contact Form (if slots remain) -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-3">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="fw-bold m-0 text-dark">
+                            <i class="bi bi-person-plus-fill text-primary me-2"></i> Register Trusted Contact
+                        </h6>
+                    </div>
+                    <div class="card-body p-3">
+                        <div th:if="${remainingSlots <= 0}" class="alert alert-warning small mb-0">
+                            <i class="bi bi-info-circle-fill me-1"></i> You have registered all <strong>5 Favorite Contacts</strong>. Delete or update an existing contact to add another.
+                        </div>
+
+                        <form th:if="${remainingSlots > 0}" th:action="@{/contacts/add}" th:object="${newContact}" method="post">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">Full Name</label>
+                                <input type="text" th:field="*{contactName}" class="form-control" placeholder="e.g. Dr. K. Senthil Kumar" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">Mobile Phone (For SMS Broadcast)</label>
+                                <input type="tel" th:field="*{contactPhone}" class="form-control" placeholder="+91 9842100000" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">Email Address (For HTML Alert)</label>
+                                <input type="email" th:field="*{email}" class="form-control" placeholder="contact@example.com">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">Relationship / Role</label>
+                                <select th:field="*{relationship}" class="form-select">
+                                    <option value="Parent">Parent</option>
+                                    <option value="Sibling">Sibling</option>
+                                    <option value="Guardian">Local Guardian</option>
+                                    <option value="Faculty / Mentor">Faculty / Mentor</option>
+                                    <option value="Colleague / Friend">Colleague / Friend</option>
+                                    <option value="Campus Security">Campus Security</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">Dispatch Priority</label>
+                                <select th:field="*{priorityLevel}" class="form-select">
+                                    <option value="1">Priority 1 (Primary Immediate)</option>
+                                    <option value="2">Priority 2 (Secondary)</option>
+                                    <option value="3">Priority 3</option>
+                                    <option value="4">Priority 4</option>
+                                    <option value="5">Priority 5</option>
+                                </select>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary fw-bold" style="background: #0f172a; border-color: #0f172a;">
+                                    <i class="bi bi-save me-1"></i> Save Trusted Contact
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: List of 5 Trusted Contacts -->
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-3">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold m-0 text-dark">
+                            <i class="bi bi-shield-check text-success me-2"></i> Configured Trusted Network (Auto-Dispatched on SOS)
+                        </h6>
+                        <span class="badge bg-light text-dark border">
+                            <i class="bi bi-broadcast text-danger"></i> Multi-Channel SMS + Email
+                        </span>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="row g-3">
+                            <div th:each="c : ${contacts}" class="col-md-6">
+                                <div class="card border h-100 shadow-xs">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <span class="badge bg-danger fw-bold" th:text="${'Priority #' + c.priorityLevel}">Priority #1</span>
+                                            <span class="badge bg-light text-muted border" th:text="${c.relationship}">Parent</span>
+                                        </div>
+                                        <h5 class="fw-bold mb-1 text-dark" th:text="${c.contactName}">Contact Name</h5>
+                                        <div class="text-secondary small mb-1">
+                                            <i class="bi bi-telephone me-1 text-primary"></i> <strong th:text="${c.contactPhone}">+91 9842100000</strong>
+                                        </div>
+                                        <div class="text-secondary small mb-3">
+                                            <i class="bi bi-envelope me-1 text-danger"></i> <span th:text="${c.email != null ? c.email : 'No email registered'}">email@example.com</span>
+                                        </div>
+                                        <div class="pt-2 border-top">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div class="d-flex gap-1">
+                                                    <button type="button" class="btn btn-sm btn-outline-dark fw-semibold" data-bs-toggle="modal" th:data-bs-target="'#editModal' + ${c.id}" title="Edit Contact Details">
+                                                        <i class="bi bi-pencil-square"></i> Edit
+                                                    </button>
+                                                    <a th:href="${'tel:' + c.contactPhone}" class="btn btn-sm btn-outline-success" title="Direct Phone Call">
+                                                        <i class="bi bi-telephone-outbound"></i> Call
+                                                    </a>
+                                                    <a th:if="${c.email != null}" th:href="${'mailto:' + c.email}" class="btn btn-sm btn-outline-primary" title="Email">
+                                                        <i class="bi bi-envelope"></i> Email
+                                                    </a>
+                                                </div>
+                                                <form th:action="@{'/contacts/delete/' + ${c.id}}" method="post" onsubmit="return confirm('Remove this emergency contact?');">
+                                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi bi-trash"></i> Remove
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            <!-- One-Click Live Test Distress Email Button for Review Demo -->
+                                            <form th:if="${c.email != null}" th:action="@{'/contacts/test-email/' + ${c.id}}" method="post">
+                                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                                <button type="submit" class="btn btn-sm btn-danger w-100 fw-bold">
+                                                    <i class="bi bi-send-check-fill me-1"></i> Send Live Test Distress Email
+                                                </button>
+                                            </form>
+                                        </div>
+
+                                        <!-- Edit Contact Modal -->
+                                        <div class="modal fade" th:id="'editModal' + ${c.id}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content shadow border-0 rounded-3 text-start">
+                                                    <div class="modal-header bg-dark text-white py-3">
+                                                        <h5 class="modal-title fw-bold">
+                                                            <i class="bi bi-pencil-square text-warning me-2"></i> Edit Contact Details
+                                                        </h5>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <form th:action="@{'/contacts/update/' + ${c.id}}" method="post">
+                                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                                        <div class="modal-body p-4">
+                                                            <div class="mb-3">
+                                                                <label class="form-label small fw-bold text-muted">Contact Full Name *</label>
+                                                                <div class="input-group">
+                                                                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                                                    <input type="text" name="contactName" class="form-control" th:value="${c.contactName}" required>
+                                                                </div>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label small fw-bold text-muted">Phone Number (Mobile) *</label>
+                                                                <div class="input-group">
+                                                                    <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                                                                    <input type="text" name="contactPhone" class="form-control" th:value="${c.contactPhone}" placeholder="+91 9842100000" required>
+                                                                </div>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label small fw-bold text-muted">Email Address (For Live Distress Email)</label>
+                                                                <div class="input-group">
+                                                                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                                                    <input type="email" name="email" class="form-control" th:value="${c.email}" placeholder="example@gmail.com">
+                                                                </div>
+                                                                <div class="form-text small">Emergency GPS maps link sent to this email upon SOS trigger.</div>
+                                                            </div>
+                                                            <div class="row g-2 mb-2">
+                                                                <div class="col-md-7">
+                                                                    <label class="form-label small fw-bold text-muted">Relationship</label>
+                                                                    <select name="relationship" class="form-select">
+                                                                        <option value="Parent" th:selected="${c.relationship == 'Parent'}">Parent</option>
+                                                                        <option value="Father" th:selected="${c.relationship == 'Father'}">Father</option>
+                                                                        <option value="Mother" th:selected="${c.relationship == 'Mother'}">Mother</option>
+                                                                        <option value="Spouse" th:selected="${c.relationship == 'Spouse'}">Spouse</option>
+                                                                        <option value="Sibling" th:selected="${c.relationship == 'Sibling'}">Sibling</option>
+                                                                        <option value="Guardian" th:selected="${c.relationship == 'Guardian'}">Guardian</option>
+                                                                        <option value="Friend" th:selected="${c.relationship == 'Friend'}">Friend / Roommate</option>
+                                                                        <option value="Colleague" th:selected="${c.relationship == 'Colleague'}">Colleague</option>
+                                                                        <option value="Self / Primary Contact" th:selected="${c.relationship == 'Self / Primary Contact'}">Self / Primary Contact</option>
+                                                                        <option value="Institutional Security" th:selected="${c.relationship == 'Institutional Security'}">Institutional Security</option>
+                                                                        <option value="Police Helpline" th:selected="${c.relationship == 'Police Helpline'}">Police Helpline</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="col-md-5">
+                                                                    <label class="form-label small fw-bold text-muted">Priority</label>
+                                                                    <select name="priorityLevel" class="form-select">
+                                                                        <option value="1" th:selected="${c.priorityLevel == 1}">Priority 1 (Primary)</option>
+                                                                        <option value="2" th:selected="${c.priorityLevel == 2}">Priority 2</option>
+                                                                        <option value="3" th:selected="${c.priorityLevel == 3}">Priority 3</option>
+                                                                        <option value="4" th:selected="${c.priorityLevel == 4}">Priority 4</option>
+                                                                        <option value="5" th:selected="${c.priorityLevel == 5}">Priority 5</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer bg-light py-2">
+                                                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                                            <button type="submit" class="btn btn-primary btn-sm fw-bold px-3">
+                                                                <i class="bi bi-check-circle me-1"></i> Update Contact
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Outbound Emails Dispatch Log / Proof -->
+                        <div class="mt-4 pt-3 border-top" th:if="${!dispatchedEmails.isEmpty()}">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold m-0 text-dark">
+                                    <i class="bi bi-envelope-paper-heart-fill text-danger me-2"></i> Recent Dispatched Emergency Emails (Live Proof)
+                                </h6>
+                                <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="openDispatchedEmailModal()">
+                                    <i class="bi bi-eye-fill me-1"></i> View Latest in Reader
+                                </button>
+                            </div>
+
+                            <div class="list-group list-group-flush border rounded">
+                                <div th:each="em, iter : ${dispatchedEmails}" class="list-group-item p-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="badge bg-danger" th:text="${em.subject}">🚨 URGENT DISTRESS ALERT</span>
+                                        <span class="badge bg-success" th:text="${em.deliveryStatus}">DELIVERED</span>
+                                    </div>
+                                    <div class="small">
+                                        <strong>To:</strong> <span class="font-monospace text-primary" th:text="${em.recipient}">email@example.com</span> &nbsp;|&nbsp; 
+                                        <strong>Commuter:</strong> <span th:text="${em.commuterName}">Preethi S.</span> &nbsp;|&nbsp; 
+                                        <strong>Timestamp:</strong> <span class="text-muted" th:text="${em.timestamp}">Timestamp</span>
+                                    </div>
+                                    <div class="mt-2 p-2 bg-light rounded small" style="max-height: 150px; overflow-y: auto;">
+                                        <div th:utext="${em.htmlBody}">HTML Email Content</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div th:replace="~{fragments/navbar :: scripts}"></div>
+</body>
+</html>
+

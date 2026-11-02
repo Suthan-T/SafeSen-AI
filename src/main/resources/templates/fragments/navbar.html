@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="header_meta(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title th:text="${title}">SafeSen-AI Women Safety Analytics</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body>
+    <!-- Top Navigation Bar -->
+    <nav th:fragment="navbar(activeTab)" class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+        <div class="container-fluid px-3">
+            <a class="navbar-brand" th:href="@{/dashboard}">
+                <i class="bi bi-shield-lock-fill text-danger fs-4"></i>
+                <span>SafeSen-AI</span>
+                <span class="brand-badge">Women Safety</span>
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activeTab == 'dashboard' ? 'active' : ''}" th:href="@{/dashboard}">
+                            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activeTab == 'safe-route' ? 'active' : ''}" th:href="@{/safe-route}">
+                            <i class="bi bi-signpost-split me-1"></i> Safe Route
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activeTab == 'nearby' ? 'active' : ''}" th:href="@{/nearby}">
+                            <i class="bi bi-geo-alt me-1"></i> Nearby Services
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activeTab == 'contacts' ? 'active' : ''}" th:href="@{/contacts}">
+                            <i class="bi bi-people me-1"></i> Emergency Contacts
+                        </a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link text-warning fw-bold" th:classappend="${activeTab == 'admin' ? 'active' : ''}" th:href="@{/admin}">
+                            <i class="bi bi-graph-up-arrow me-1"></i> Admin Analytics
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Voice Listener Indicator -->
+                    <div id="voice-status-badge">
+                        <span class="voice-badge-active"><span class="voice-pulse-dot"></span> Voice SOS Active</span>
+                    </div>
+
+                    <!-- Instant One-Touch Emergency SOS Button -->
+                    <button type="button" class="btn btn-sos btn-trigger-sos" title="One-Touch Emergency SOS Trigger">
+                        <i class="bi bi-exclamation-octagon-fill"></i>
+                        <span>SOS</span>
+                    </button>
+
+                    <!-- User Account / Logout -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i>
+                            <span sec:authentication="name">User</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow">
+                            <li><h6 class="dropdown-header">Logged In User</h6></li>
+                            <li><span class="dropdown-item-text text-muted small" sec:authentication="name"></span></li>
+                            <li sec:authorize="hasRole('ADMIN')">
+                                <a class="dropdown-item" th:href="@{/admin}"><i class="bi bi-shield-check text-primary me-2"></i>Admin Console</a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form th:action="@{/logout}" method="post" class="d-inline">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Global Active SOS Distress Modal (Figure B.4) -->
+    <div th:fragment="sos_modal" class="modal fade" id="sosModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-danger border-3 shadow-lg" style="background: #fffafa;">
+                <div class="modal-header bg-danger text-white py-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-exclamation-triangle-fill fs-3 animate__animated animate__flash animate__infinite"></i>
+                        <h4 class="modal-title fw-bold m-0">EMERGENCY SOS ACTIVE · DISTRESS BROADCASTING</h4>
+                    </div>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-danger d-flex align-items-center gap-3 py-3 mb-4" role="alert">
+                        <i class="bi bi-broadcast fs-1 text-danger"></i>
+                        <div>
+                            <h5 class="fw-bold mb-1">LIVE DISTRESS SIGNAL SENT TO TRUSTED CONTACTS & LOCAL AUTHORITIES</h5>
+                            <p class="m-0 text-dark" id="sos-modal-msg">Coordinates locked and emergency broadcast dispatched via SMS & Email.</p>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-white border rounded">
+                                <span class="text-muted small fw-bold text-uppercase">Current GPS Coordinates (WGS84)</span>
+                                <div class="fs-5 fw-bold text-danger mt-1">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                    <span id="sos-modal-lat">10.957400</span>, <span id="sos-modal-lon">78.081800</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-white border rounded">
+                                <span class="text-muted small fw-bold text-uppercase">Trigger Channel</span>
+                                <div class="fs-5 fw-bold text-dark mt-1">
+                                    <i class="bi bi-mic-fill text-danger me-1"></i>
+                                    <span id="sos-modal-mode">One-Touch SOS / Voice</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 bg-light mb-4">
+                        <div class="card-body">
+                            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-check2-circle text-success me-1"></i> Dispatched Notifications Status:</h6>
+                            <ul class="list-unstyled mb-0 small">
+                                <li class="py-1 border-bottom d-flex justify-content-between">
+                                    <span><i class="bi bi-chat-dots-fill text-primary me-2"></i>Urgent SMS to 5 Favorite Trusted Contacts:</span>
+                                    <span class="badge bg-success">BROADCASTED</span>
+                                </li>
+                                <li class="py-1 border-bottom d-flex justify-content-between align-items-center">
+                                    <span><i class="bi bi-envelope-fill text-danger me-2"></i>SMTP Distress Email with Live Location:</span>
+                                    <span class="badge bg-success">DISPATCHED</span>
+                                </li>
+                                <li class="py-1 d-flex justify-content-between">
+                                    <span><i class="bi bi-shield-fill-check text-dark me-2"></i>Campus Security & Control Desk Notification:</span>
+                                    <span class="badge bg-success">LOGGED</span>
+                                </li>
+                            </ul>
+                            <div class="mt-2 text-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="openDispatchedEmailModal()">
+                                    <i class="bi bi-envelope-paper-fill me-1"></i> View Dispatched Email Proof (Live Preview)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                        <a id="sos-modal-map-link" href="#" target="_blank" class="btn btn-outline-primary">
+                            <i class="bi bi-map-fill me-1"></i> Open Live Map in OpenStreetMap
+                        </a>
+                        <div class="d-flex gap-2">
+                            <a href="tel:112" class="btn btn-danger fw-bold">
+                                <i class="bi bi-telephone-fill me-1"></i> Direct Call Police (112)
+                            </a>
+                            <button type="button" id="btn-sos-deactivate" class="btn btn-success fw-bold">
+                                <i class="bi bi-shield-check me-1"></i> I AM SAFE (CANCEL SIREN)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Dispatched Email Proof Modal for Viva/Review -->
+    <div class="modal fade" id="emailProofModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content shadow-lg border-0 rounded-3">
+                <div class="modal-header bg-dark text-white py-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-envelope-check-fill text-danger fs-4"></i>
+                        <h5 class="modal-title fw-bold m-0">Live Emergency Distress Email Dispatch Proof</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="p-3 bg-light rounded border mb-3">
+                        <div class="row g-2 small">
+                            <div class="col-sm-6">
+                                <strong>Recipient:</strong> <span id="proofRecipient" class="text-primary font-monospace">supervisor@vsb.ac.in</span>
+                            </div>
+                            <div class="col-sm-6">
+                                <strong>Timestamp:</strong> <span id="proofTimestamp" class="text-muted font-monospace">Just now</span>
+                            </div>
+                            <div class="col-sm-6">
+                                <strong>Delivery Status:</strong> <span id="proofStatus" class="badge bg-success">DELIVERED</span>
+                            </div>
+                            <div class="col-sm-6">
+                                <strong>Subject:</strong> <span id="proofSubject" class="text-danger fw-bold">🚨 URGENT DISTRESS ALERT</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-muted small text-uppercase mb-2">Rendered HTML Distress Email Body:</h6>
+                    <div id="proofHtmlContainer" class="p-3 border rounded bg-white shadow-xs" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close Preview</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Fragment -->
+    <div th:fragment="scripts">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script th:src="@{/js/voice-sos.js}"></script>
+    </div>
+</body>
+</html>
+
